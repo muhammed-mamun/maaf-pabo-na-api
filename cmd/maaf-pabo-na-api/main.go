@@ -15,10 +15,41 @@ import (
 	"github.com/muhammed-mamun/maaf-pabo-na-api/internal/config"
 	"github.com/muhammed-mamun/maaf-pabo-na-api/internal/http/handlers/github"
 	"github.com/muhammed-mamun/maaf-pabo-na-api/internal/utils/responses"
+	"github.com/sashabaranov/go-openai"
 )
+
+type RoastParams struct {
+	Username  string
+	UserBio   string
+	Followers int
+	Repos     []string
+}
 
 type requestPayload struct {
 	Username string `json:"username"`
+}
+
+func generateRoast(params RoastParams) (string, error) {
+	prompt := fmt.Sprintf(
+		"Create a humorously critical roast about the GitHub user '%s' based on their bio: '%s' and repositories: %v and followes %d",
+		params.Username, params.UserBio, params.Repos, params.Followers,
+	)
+
+	apiKey := config.MustLoad().OpenAIAPI.APIKEY
+	client := openai.NewClient(apiKey)
+
+	resp, err := client.CreateCompletion(context.Background(), openai.CompletionRequest{
+		Model:       "text-davinci-003",
+		Prompt:      prompt,
+		MaxTokens:   150,
+		Temperature: 0.8,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to generate roast: %v", err)
+	}
+
+	// Return the response text
+	return resp.Choices[0].Text, nil
 }
 
 func main() {
