@@ -13,7 +13,7 @@ type HTTPServer struct {
 	Addr string `yaml:"address" env-required:"true"`
 }
 
-type OpenAIConfig struct {
+type GEMINI_API_KEY_Config struct {
 	APIKEY string `yaml:"api_key" env:"GEMINI_API_KEY" env-required:"true"`
 }
 
@@ -22,7 +22,7 @@ type Config struct {
 	Env         string `yaml:"env" env:"ENV" env-required:"true"`
 	StoragePath string `yaml:"storage_path" env-required:"true"`
 	HTTPServer  `yaml:"http_server"`
-	OpenAIAPI   OpenAIConfig `yaml:"openai_api" env-required:"true"`
+	GenAIAPI    GEMINI_API_KEY_Config `yaml:"genai_api" env-required:"true"`
 }
 
 func MustLoad() *Config {
@@ -52,9 +52,9 @@ func MustLoad() *Config {
 		log.Fatalf("can not read config file %s", err.Error())
 	}
 
-	if cfg.OpenAIAPI.APIKEY == "" {
-		cfg.OpenAIAPI.APIKEY = os.Getenv("OPENAI_API_KEY")
-		if cfg.OpenAIAPI.APIKEY == "" {
+	if cfg.GenAIAPI.APIKEY == "" {
+		cfg.GenAIAPI.APIKEY = os.Getenv("GEMINI_API_KEY")
+		if cfg.GenAIAPI.APIKEY == "" {
 			log.Fatal("openai API key is not set")
 		}
 	}

@@ -15,47 +15,51 @@ import (
 	"github.com/muhammed-mamun/maaf-pabo-na-api/internal/config"
 	"github.com/muhammed-mamun/maaf-pabo-na-api/internal/http/handlers/github"
 	"github.com/muhammed-mamun/maaf-pabo-na-api/internal/utils/responses"
-	"github.com/sashabaranov/go-openai"
 )
 
-type RoastParams struct {
-	Username  string
-	UserBio   string
-	Followers int
-	Repos     []string
-}
+// type RoastParams struct {
+// 	Name      string
+// 	UserBio   string
+// 	Followers int
+// 	Repos     []string
+// }
 
 type requestPayload struct {
 	Username string `json:"username"`
 }
 
-func generateRoast(params RoastParams) (string, error) {
-	prompt := fmt.Sprintf(
-		"Create a humorously critical roast about the GitHub user '%s' based on their bio: '%s' and repositories: %v and followes %d",
-		params.Username, params.UserBio, params.Repos, params.Followers,
-	)
+// func generateRoast(params RoastParams) (string, error) {
+// 	prompt := fmt.Sprintf(
+// 		"Create a humorously critical roast about the GitHub user '%s' based on their bio: '%s' and repositories: %v and followes %d",
+// 		params.Name, params.UserBio, params.Repos, params.Followers,
+// 	)
 
-	apiKey := config.MustLoad().OpenAIAPI.APIKEY
-	client := openai.NewClient(apiKey)
+// 	apiKey := config.MustLoad().OpenAIAPI.APIKEY
+// 	client := openai.NewClient(apiKey)
 
-	resp, err := client.CreateCompletion(context.Background(), openai.CompletionRequest{
-		Model:       "text-davinci-003",
-		Prompt:      prompt,
-		MaxTokens:   150,
-		Temperature: 0.8,
-	})
-	if err != nil {
-		return "", fmt.Errorf("failed to generate roast: %v", err)
-	}
+// 	resp, err := client.CreateCompletion(context.Background(), openai.CompletionRequest{
+// 		Model:       "text-davinci-003",
+// 		Prompt:      prompt,
+// 		MaxTokens:   150,
+// 		Temperature: 0.8,
+// 	})
 
-	// Return the response text
-	return resp.Choices[0].Text, nil
-}
+// 	if err != nil {
+// 		return "", fmt.Errorf("failed to generate roast: %v", err)
+// 	}
+
+// 	if len(resp.Choices) == 0 {
+// 		return "", fmt.Errorf("no choices return from OpenAI API")
+// 	}
+
+// 	// Return the response text
+// 	return resp.Choices[0].Text, nil
+// }
 
 func main() {
 	// Load config
 	cfg := config.MustLoad()
-
+	fmt.Println(cfg.GenAIAPI.APIKEY)
 	// Database setup (if needed, make sure this part is properly implemented)
 
 	// Setup router
@@ -109,39 +113,47 @@ func main() {
 		repos, err := client.GetRepositories(r.Context(), username)
 		if err != nil {
 			responses.WriteJson(w, http.StatusInternalServerError, map[string]string{
-				"error": fmt.Sprintf("error fetching github profile: %s", err),
+				"error": fmt.Sprintf("error fetching github repositories: %s", err),
 			})
 			return
 		}
 
-		//prepare response data
-		results := map[string]interface{}{
-			"photoUrl":     user.GetAvatarURL(),
-			"username":     user.GetLogin(),
-			"name":         user.GetName(),
-			"bio":          user.GetBio(),
-			"location":     user.GetLocation(),
-			"followers":    user.GetFollowers(),
-			"following":    user.GetFollowing(),
-			"repositories": []interface{}{},
-		}
+		repoNames := []string{}
 
 		for _, repo := range repos {
-			repoDetails := map[string]interface{}{
-				"name":        repo.GetName(),
-				"description": repo.GetDescription(),
-				"url":         repo.GetHTMLURL(),
-				"startgazers": repo.GetStargazersCount(),
-				"forks":       repo.GetForksCount(),
-			}
-			results["repositories"] = append(results["repositories"].([]interface{}), repoDetails)
+			repoNames = append(repoNames, fmt.Sprintf("%s - %s", repo.GetName(), repo.GetDescription()))
 		}
+		results := map[string]interface{}{
+			"name":         user.GetName(),
+			"userBio":      user.GetBio(),
+			"followers":    user.GetFollowers(),
+			"repositories": repoNames,
+		}
+		//prepare response data
+		// roastparams := RoastParams{
+		// 	Name:      user.GetName(),
+		// 	UserBio:   user.GetBio(),
+		// 	Followers: user.GetFollowers(),
+		// 	Repos:     repoNames,
+		// }
 
-		// Send the response as JSON
+		// roast, err := generateRoast(roastparams)
+
+		// if err != nil {
+		// 	responses.WriteJson(w, http.StatusInternalServerError, map[string]string{
+		// 		"error": fmt.Sprintf("error generating roast: %s", err),
+		// 	})
+		// 	return
+		// }
+		// response := map[string]interface{}{
+		// 	"roast": roast,
+		// }
+
+		//send response as JSON
 		if err := responses.WriteJson(w, http.StatusOK, results); err != nil {
-			// Handle any error that might occur when encoding the JSON
 			http.Error(w, fmt.Sprintf("Error encoding JSON: %s", err), http.StatusInternalServerError)
 		}
+
 	})
 
 	// Server setup
